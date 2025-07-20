@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>ผลการค้นหา</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container mt-5">
+    <h1 class="mb-4">🔍 ผลการค้นหาหมายเลขโครงรถ</h1>
+    {% if result %}
+        <ul class="list-group">
+            {% for key, value in result.items() %}
+                <li class="list-group-item"><strong>{{ key }}:</strong> {{ value }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="alert alert-warning mt-3">ไม่พบข้อมูล</div>
+    {% endif %}
+    <a href="/" class="btn btn-secondary mt-4">⬅️ กลับหน้าหลัก</a>
+</div>
+</body>
+</html>
