@@ -1,3 +1,22 @@
+
+import csv
+from datetime import datetime
+
+def log_upload(filename, updated_count):
+    log_file = "upload_log.csv"
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(log_file, "a", newline="", encoding="utf-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow([now, filename, updated_count])
+
+
+from flask import Flask, render_template, request, redirect, flash
+import sqlite3
+import glob
+import os
+import pandas as pd
+from flask_caching import Cache
+
 from flask import Flask, render_template, request
 import sqlite3
 import glob
@@ -63,3 +82,31 @@ def search():
         if rows:
             result = {"หมายเลขโครงรถ": rows[0][0], "สถานะ": rows[0][1]}
     return render_template("search.html", result=result)
+
+@app.route("/upload", methods=["GET", "POST"])
+def upload():
+    message = None
+    if request.method == "POST":
+        uploaded_file = request.files.get("file")
+        if uploaded_file and uploaded_file.filename.endswith(".xlsx"):
+            df = pd.read_excel(uploaded_file)
+            updated = 0
+            if "หมายเลขโครงรถ" in df.columns and "สถานะ" in df.columns:
+                for db_file in db_files:
+                    conn = sqlite3.connect(db_file)
+                    cur = conn.cursor()
+                    for _, row in df.iterrows():
+                        vehicle_number = row["หมายเลขโครงรถ"]
+                        status = row["สถานะ"]
+                        cur.execute("UPDATE vehicles SET status = ? WHERE vehicle_number = ?", (status, vehicle_number))
+                        updated += cur.rowcount
+                    conn.commit()
+                    conn.close()
+                cache.delete("homepage_stats")  # เคลียร์ cache
+                log_upload(uploaded_file.filename, updated)
+                message = f"อัปเดตข้อมูลสำเร็จ {updated:,} รายการ"
+            else:
+                message = "ไฟล์ต้องมีคอลัมน์ 'หมายเลขโครงรถ' และ 'สถานะ'"
+        else:
+            message = "กรุณาอัปโหลดไฟล์ Excel (.xlsx) เท่านั้น"
+    return render_template("upload.html", message=message)
