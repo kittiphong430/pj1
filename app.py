@@ -50,6 +50,3 @@ def search():
         if rows:
             result = {"หมายเลขโครงรถ": rows[0][0], "สถานะ": rows[0][1]}
     return render_template("search.html", result=result)
-
-if __name__ == "__main__":
-    app.run(debug=True)
