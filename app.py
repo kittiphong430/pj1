@@ -1,8 +1,10 @@
 from flask import Flask, render_template, request
 import sqlite3
 import glob
+from flask_caching import Cache
 
 app = Flask(__name__)
+cache = Cache(app, config={'CACHE_TYPE': 'SimpleCache'})
 
 # โหลดไฟล์ฐานข้อมูลทั้งหมด
 db_files = sorted(glob.glob("vehicles_part*_updated.db"))
@@ -17,13 +19,24 @@ def query_all_dbs(query, params=()):
         conn.close()
     return results
 
-@app.route("/", methods=["GET"])
-def index():
-    vehicle_number = request.args.get("vehicle_number", "").strip()
+def get_total_stats():
     total = sum([query_all_dbs("SELECT COUNT(*) FROM vehicles")[i][0] for i in range(len(db_files))])
     checked = sum([query_all_dbs("SELECT COUNT(*) FROM vehicles WHERE status = 'ตรวจสอบแล้ว'")[i][0] for i in range(len(db_files))])
     remaining = total - checked
     percent = round((checked / total) * 100, 2) if total else 0
+    return total, checked, remaining, percent
+
+@app.route("/", methods=["GET"])
+def index():
+    vehicle_number = request.args.get("vehicle_number", "").strip()
+
+    # ดึงจาก cache ถ้ามี
+    stats = cache.get("homepage_stats")
+    if not stats:
+        stats = get_total_stats()
+        cache.set("homepage_stats", stats, timeout=300)  # แคชไว้ 5 นาที
+
+    total, checked, remaining, percent = stats
 
     search_result = None
     if vehicle_number:
